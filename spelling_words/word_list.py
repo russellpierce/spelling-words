@@ -13,18 +13,18 @@ from loguru import logger
 class WordListManager:
     """Manages loading and processing of spelling word lists."""
 
-    # Pattern for valid words: only hyphens and apostrophes allowed as special chars
-    # We'll validate that the rest are alphabetic using .isalpha() for Unicode support
-    SPECIAL_CHARS_PATTERN = re.compile(r"^[a-zA-Z\u00C0-\u024F\-']+$")
+    # Pattern for valid words: allow letters, hyphens, apostrophes, and spaces
+    # Unicode range \u00C0-\u024F covers Latin Extended-A and Extended-B (accented characters)
+    SPECIAL_CHARS_PATTERN = re.compile(r"^[a-zA-Z\u00C0-\u024F\-' ]+$")
 
     def load_from_file(self, file_path: str) -> list[str]:
         """Load words from a text file.
 
         Reads a text file containing one word per line, processes each word by:
         - Converting to lowercase
-        - Stripping whitespace
+        - Stripping leading/trailing whitespace
         - Skipping empty lines
-        - Validating word format (alphabetic with optional hyphens/apostrophes)
+        - Validating word format (letters, spaces, hyphens, apostrophes, accented chars)
 
         Args:
             file_path: Path to the word list file
@@ -69,7 +69,7 @@ class WordListManager:
                     if not self.SPECIAL_CHARS_PATTERN.match(word):
                         error_msg = (
                             f"Invalid word format at line {line_num}: '{word}'. "
-                            f"Words must contain only letters, hyphens, and apostrophes."
+                            f"Words must contain only letters, spaces, hyphens, apostrophes, and accented characters."
                         )
                         logger.error(error_msg)
                         raise ValueError(error_msg)

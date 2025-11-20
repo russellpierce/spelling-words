@@ -2,6 +2,31 @@
 
 A Python tool to automatically generate Anki flashcard decks for spelling test preparation. Creates cards with audio pronunciations and definitions from Merriam-Webster dictionaries.
 
+## Quick Start
+
+**First time setup:**
+
+```bash
+# 1. Clone the repository
+git clone <repository-url>
+cd spelling-words
+
+# 2. Install dependencies
+uv sync
+
+# 3. Set up your API key (see Configuration section below)
+cp .env.example .env
+# Edit .env and add your MW_ELEMENTARY_API_KEY
+```
+
+**Run the tool:**
+
+```bash
+uv run spelling-words -w your_words.txt -o output.apkg
+```
+
+That's it! The APKG file can be imported into Anki or AnkiDroid.
+
 ## Features
 
 - **Automatic Audio Downloads**: Fetches pronunciation audio from Merriam-Webster APIs
@@ -91,10 +116,16 @@ CACHE_DIR=.cache/
 Create an Anki deck from a word list:
 
 ```bash
-uv run python -m spelling_words --words my_words.txt --output spelling_deck.apkg
+uv run spelling-words --words my_words.txt --output spelling_deck.apkg
 ```
 
 Or using short flags:
+
+```bash
+uv run spelling-words -w my_words.txt -o spelling_deck.apkg
+```
+
+**Alternative**: You can also use the Python module syntax:
 
 ```bash
 uv run python -m spelling_words -w my_words.txt -o spelling_deck.apkg
@@ -110,12 +141,18 @@ banana
 elephant
 dictionary
 pronunciation
+hors d'oeuvres
+fräulein
 ```
 
 - Words should be lowercase
 - Empty lines are ignored
 - Duplicates are automatically removed
-- Hyphens and apostrophes are allowed (e.g., "self-aware", "won't")
+- Supported characters:
+  - Letters (including accented: é, ä, ñ, etc.)
+  - Spaces (for multi-word phrases)
+  - Hyphens (e.g., "mother-in-law")
+  - Apostrophes (e.g., "don't")
 
 ### Command-Line Options
 
@@ -132,7 +169,7 @@ Options:
 Enable detailed logging for debugging:
 
 ```bash
-uv run python -m spelling_words -w words.txt -v
+uv run spelling-words -w words.txt -v
 ```
 
 This shows:
@@ -215,24 +252,24 @@ EOF
 Generate deck:
 
 ```bash
-uv run python -m spelling_words -w test_words.txt -o test_deck.apkg
+uv run spelling-words -w test_words.txt -o test_deck.apkg
 ```
 
 ### Example 2: Weekly Spelling List
 
 ```bash
 # Week 1
-uv run python -m spelling_words -w week1_words.txt -o spelling_week1.apkg
+uv run spelling-words -w week1_words.txt -o spelling_week1.apkg
 
 # Week 2
-uv run python -m spelling_words -w week2_words.txt -o spelling_week2.apkg
+uv run spelling-words -w week2_words.txt -o spelling_week2.apkg
 ```
 
 ### Example 3: Large Vocabulary List
 
 ```bash
 # Process 100+ words (uses cache for previously seen words)
-uv run python -m spelling_words -w grade3_vocabulary.txt -o grade3.apkg -v
+uv run spelling-words -w grade3_vocabulary.txt -o grade3.apkg -v
 ```
 
 ## Development
@@ -317,6 +354,27 @@ This project follows the coding standards in `CLAUDE.md`:
 
 ## Troubleshooting
 
+### ModuleNotFoundError: No module named 'spelling_words'
+
+```
+ModuleNotFoundError: No module named 'spelling_words.cli'
+```
+
+**Solution**: You need to install the package first:
+
+```bash
+# Make sure you're in the project directory
+cd spelling-words
+
+# Install dependencies (creates virtual environment)
+uv sync
+
+# Now try running again
+uv run spelling-words -w your_words.txt -o output.apkg
+```
+
+**Note**: Always use `uv run` before the command. This ensures the command runs in the correct virtual environment with all dependencies installed.
+
 ### ffmpeg not found
 
 ```
@@ -359,7 +417,7 @@ If you suspect cache corruption:
 rm -rf .cache/
 
 # Re-run
-uv run python -m spelling_words -w words.txt -o output.apkg
+uv run spelling-words -w words.txt -o output.apkg
 ```
 
 ## Technical Details

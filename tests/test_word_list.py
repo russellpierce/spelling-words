@@ -94,6 +94,21 @@ class TestLoadFromFile:
         assert "don't" in words
         assert "self-aware" in words
 
+    def test_load_handles_spaces_and_accented_chars(self, tmp_path):
+        """Test that spaces and accented characters are allowed in words."""
+        word_file = tmp_path / "words_unicode.txt"
+        word_file.write_text("hors d'oeuvres\nfräulein\ncafé\nnaïve\npièce de résistance\n")
+
+        manager = WordListManager()
+        words = manager.load_from_file(str(word_file))
+
+        assert len(words) == 5
+        assert "hors d'oeuvres" in words
+        assert "fräulein" in words
+        assert "café" in words
+        assert "naïve" in words
+        assert "pièce de résistance" in words
+
     def test_load_validates_format(self, tmp_path):
         """Test that invalid word format raises ValueError."""
         word_file = tmp_path / "words_invalid.txt"
@@ -191,8 +206,11 @@ class TestWordListManagerIntegration:
         words = manager.load_from_file(str(fixture_path))
 
         # Based on tests/fixtures/test_words.txt content
-        assert len(words) == 10
+        assert len(words) == 12
         assert "tag" in words
         assert "send" in words
         assert "deck" in words
+        # Test words with special characters
+        assert "hors d'oeuvres" in words
+        assert "fräulein" in words
         assert all(word.islower() for word in words)
