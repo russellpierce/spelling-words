@@ -49,6 +49,15 @@ Create basic APKG files with audio and definitions for spelling test preparation
 
 ### 2. Configuration Module (`spelling_words/config.py`)
 
+**Write tests FIRST** (`tests/test_config.py`):
+- [ ] Create test file with TEST INTEGRITY directive at top
+- [ ] Test Settings loads from .env correctly
+- [ ] Test Settings raises error when required API key missing
+- [ ] Test Settings uses default values for optional fields
+- [ ] Test get_settings() returns singleton
+- [ ] Run tests to verify they fail (red)
+
+**Then implement**:
 - [ ] Create `Settings` class inheriting from `pydantic_settings.BaseSettings`
 - [ ] Define fields:
   - [ ] `mw_elementary_api_key: str` (required)
@@ -66,6 +75,18 @@ Create basic APKG files with audio and definitions for spelling test preparation
 
 ### 4. Word List Manager (`spelling_words/word_list.py`)
 
+**Write tests FIRST** (`tests/test_word_list.py`):
+- [ ] Create test file with TEST INTEGRITY directive at top
+- [ ] Test load_from_file() with valid word list
+- [ ] Test load_from_file() raises FileNotFoundError for missing file
+- [ ] Test load_from_file() handles encoding correctly
+- [ ] Test load_from_file() skips empty lines and strips whitespace
+- [ ] Test load_from_file() converts to lowercase
+- [ ] Test remove_duplicates() preserves order
+- [ ] Test remove_duplicates() logs count
+- [ ] Run tests to verify they fail (red)
+
+**Then implement**:
 - [ ] Create `WordListManager` class
 - [ ] Implement `load_from_file(file_path: str) -> list[str]`:
   - [ ] Read file with proper encoding handling
@@ -94,6 +115,20 @@ Create basic APKG files with audio and definitions for spelling test preparation
 
 ### 6. Dictionary API Client (`spelling_words/dictionary_client.py`)
 
+**Write tests FIRST** (`tests/test_dictionary_client.py`):
+- [ ] Create test file with TEST INTEGRITY directive at top
+- [ ] Test MerriamWebsterClient raises ValueError for empty API key
+- [ ] Test get_word_data() with mocked successful response
+- [ ] Test get_word_data() returns None for word not found
+- [ ] Test get_word_data() retries on timeout
+- [ ] Test extract_definition() parses valid data
+- [ ] Test extract_definition() raises ValueError for invalid data
+- [ ] Test extract_audio_urls() returns correct URLs
+- [ ] Test extract_audio_urls() returns empty list when no audio
+- [ ] Respect LOCAL_TESTING flag for cache persistence
+- [ ] Run tests to verify they fail (red)
+
+**Then implement**:
 - [ ] Create `MerriamWebsterClient` class
 - [ ] `__init__(api_key: str, session: CachedSession)`:
   - [ ] Validate API key is non-empty (raise `ValueError`)
@@ -116,6 +151,18 @@ Create basic APKG files with audio and definitions for spelling test preparation
 
 ### 7. Audio Processor (`spelling_words/audio_processor.py`)
 
+**Write tests FIRST** (`tests/test_audio_processor.py`):
+- [ ] Create test file with TEST INTEGRITY directive at top
+- [ ] Test download_audio() with mocked successful response
+- [ ] Test download_audio() retries on timeout
+- [ ] Test download_audio() validates Content-Type
+- [ ] Test process_audio() converts to MP3 correctly
+- [ ] Test process_audio() generates sanitized filename
+- [ ] Test process_audio() raises error for invalid audio
+- [ ] Respect LOCAL_TESTING flag for cache persistence
+- [ ] Run tests to verify they fail (red)
+
+**Then implement**:
 - [ ] Create `AudioProcessor` class
 - [ ] Implement `download_audio(url: str, session: CachedSession) -> bytes | None`:
   - [ ] Use cached session (automatic caching!)
@@ -131,6 +178,17 @@ Create basic APKG files with audio and definitions for spelling test preparation
 
 ### 8. APKG Manager (`spelling_words/apkg_manager.py`)
 
+**Write tests FIRST** (`tests/test_apkg_manager.py`):
+- [ ] Create test file with TEST INTEGRITY directive at top
+- [ ] Test create_deck() creates valid deck
+- [ ] Test create_note() with all fields
+- [ ] Test create_note() validates inputs
+- [ ] Test package_apkg() creates valid APKG file
+- [ ] Test package_apkg() includes media files
+- [ ] Test generated APKG can be loaded by genanki
+- [ ] Run tests to verify they fail (red)
+
+**Then implement**:
 - [ ] Import genanki
 - [ ] Create Anki Model for spelling cards:
   ```python
@@ -165,6 +223,17 @@ Create basic APKG files with audio and definitions for spelling test preparation
 
 ### 9. Command-Line Interface (`spelling_words/cli.py`)
 
+**Write tests FIRST** (`tests/test_cli.py`):
+- [ ] Create test file with TEST INTEGRITY directive at top
+- [ ] Test CLI accepts word list file argument
+- [ ] Test CLI accepts output APKG filename
+- [ ] Test CLI handles --verbose flag
+- [ ] Test CLI validates inputs
+- [ ] Test CLI error handling
+- [ ] Use click.testing.CliRunner for testing
+- [ ] Run tests to verify they fail (red)
+
+**Then implement**:
 - [ ] Use `@click.command()` decorator pattern
 - [ ] Define options:
   - [ ] `@click.option('--words', '-w', required=True, help='Path to word list file')`

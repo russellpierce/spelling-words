@@ -291,6 +291,47 @@ cursor.execute(f"INSERT INTO notes (id, flds) VALUES ({note_id}, '{fields}')")
 
 ## Testing Guidelines
 
+### Test-Driven Development Philosophy
+
+**CRITICAL DIRECTIVE: TEST INTEGRITY**
+
+**NEVER remove, disable, or work around a failing test without explicit user review and approval.**
+
+When a test fails:
+1. **STOP** - Do not proceed with implementation
+2. **ANALYZE** - Understand why the test is failing
+3. **DISCUSS** - Present the failure to the user with:
+   - Exact error message and stack trace
+   - Analysis of the root cause
+   - Proposed solutions (fix code vs. fix test)
+4. **WAIT** - Get explicit user approval before:
+   - Modifying the test expectations
+   - Removing or commenting out the test
+   - Adding `pytest.skip` or `pytest.xfail`
+   - Working around the test
+
+Tests are the specification. A failing test means either:
+- The implementation is wrong (most common - fix the code)
+- The test expectations are wrong (requires user discussion)
+- The requirements have changed (requires user approval)
+
+**Enforcement**: Every test file must include this directive as a comment at the top.
+
+### Development Workflow
+
+For each feature or module:
+
+1. **Write tests FIRST** before writing implementation code
+2. Run tests to verify they fail (red)
+3. Implement the minimal code to make tests pass (green)
+4. Refactor if needed while keeping tests green
+5. Commit with passing tests
+
+**Do NOT**:
+- Write implementation code before writing tests
+- Skip writing tests "to move faster"
+- Commit code without corresponding tests
+
 ### Test Structure
 
 Use pytest for testing:
