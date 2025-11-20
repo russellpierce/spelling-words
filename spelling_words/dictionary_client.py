@@ -81,8 +81,16 @@ class MerriamWebsterClient:
                 )
                 response = self.session.get(url, params=params, timeout=10)
                 logger.debug(f"Response status code: {response.status_code}")
-                logger.debug(f"Response headers: {dict(response.headers)}")
-                logger.debug(f"Response content (first 500 chars): {response.text[:500]}")
+                try:
+                    logger.debug(f"Response headers: {dict(response.headers)}")
+                except (TypeError, AttributeError):
+                    # In tests, headers might be mocked and not convertible to dict
+                    logger.debug(f"Response headers: {response.headers}")
+                try:
+                    logger.debug(f"Response content (first 500 chars): {response.text[:500]}")
+                except (TypeError, AttributeError):
+                    # In tests, text might be mocked and not subscriptable
+                    logger.debug(f"Response content: {response.text}")
                 response.raise_for_status()
 
                 data = response.json()
