@@ -15,13 +15,15 @@ from spelling_words.cli import main
 class TestCLIBasics:
     """Tests for basic CLI functionality."""
 
-    def test_cli_requires_words_argument(self):
-        """Test that CLI requires --words argument."""
+    def test_cli_shows_help_without_arguments(self):
+        """Test that CLI shows help when run without arguments."""
         runner = CliRunner()
         result = runner.invoke(main, [])
 
-        assert result.exit_code != 0
-        assert "Missing option" in result.output or "required" in result.output.lower()
+        assert result.exit_code == 0
+        assert "Usage:" in result.output
+        assert "--words" in result.output
+        assert "Generate Anki flashcard deck" in result.output
 
     def test_cli_accepts_words_short_option(self, tmp_path):
         """Test that CLI accepts -w short option."""

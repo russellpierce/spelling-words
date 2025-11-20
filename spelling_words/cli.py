@@ -24,7 +24,7 @@ console = Console()
     "--words",
     "-w",
     "words_file",
-    required=True,
+    required=False,
     type=click.Path(exists=True, file_okay=True, dir_okay=False, path_type=Path),
     help="Path to word list file (one word per line)",
 )
@@ -42,13 +42,19 @@ console = Console()
     is_flag=True,
     help="Enable debug logging",
 )
-def main(words_file: Path, output_file: Path, verbose: bool) -> None:
+@click.pass_context
+def main(ctx: click.Context, words_file: Path | None, output_file: Path, verbose: bool) -> None:
     """Generate Anki flashcard deck (APKG) for spelling words.
 
     Reads a list of words from a file, fetches definitions and audio
     from Merriam-Webster Dictionary API, and creates an Anki deck
     with flashcards for spelling practice.
     """
+    # Show help if no words file provided
+    if words_file is None:
+        click.echo(ctx.get_help())
+        ctx.exit()
+
     # Configure logging level
     if verbose:
         logger.remove()

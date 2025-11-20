@@ -141,12 +141,18 @@ banana
 elephant
 dictionary
 pronunciation
+hors d'oeuvres
+fräulein
 ```
 
 - Words should be lowercase
 - Empty lines are ignored
 - Duplicates are automatically removed
-- Hyphens and apostrophes are allowed (e.g., "self-aware", "won't")
+- Supported characters:
+  - Letters (including accented: é, ä, ñ, etc.)
+  - Spaces (for multi-word phrases)
+  - Hyphens (e.g., "mother-in-law")
+  - Apostrophes (e.g., "don't")
 
 ### Command-Line Options
 
