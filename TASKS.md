@@ -46,10 +46,11 @@ Create basic APKG files with audio and definitions for spelling test preparation
 - [x] Verify pre-commit hooks work: `uv run pre-commit run --all-files`
 - [x] Run setup verification script: `./scripts/verify_setup.sh`
 - [x] Configure MW_ELEMENTARY_API_KEY in `.env` file
-- [x] Enable LOCAL_TESTING=True in `.env` for cache persistence
+- [x] Set LOCAL_TESTING=False in `.env` to limit API calls during testing
 
 **Notes**:
 - Python 3.11 detected (3.12+ recommended but 3.11 should work)
+- LOCAL_TESTING=False prevents excessive API calls during development
 - All automated setup tasks completed
 - Only remaining task: ffmpeg installation (requires sudo access on user's machine)
 
