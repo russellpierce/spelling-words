@@ -159,57 +159,51 @@ def process_words(
     skipped = 0
 
     for word in track(words, description="Processing words..."):
+        # Fetch word data from dictionary
+        logger.debug(f"Fetching data for word: {word}")
+        word_data = dictionary_client.get_word_data(word)
+
+        if word_data is None:
+            logger.warning(f"Word not found in dictionary: {word}")
+            console.print(f"  [yellow]⊘[/yellow] [dim]{word}[/dim] - not found in dictionary")
+            skipped += 1
+            continue
+
+        # Extract definition and audio URLs
         try:
-            # Fetch word data from dictionary
-            logger.debug(f"Fetching data for word: {word}")
-            word_data = dictionary_client.get_word_data(word)
+            definition = dictionary_client.extract_definition(word_data)
+        except ValueError as e:
+            logger.warning(f"No definition found for {word}: {e}")
+            console.print(f"  [yellow]⊘[/yellow] [dim]{word}[/dim] - no definition")
+            skipped += 1
+            continue
 
-            if word_data is None:
-                logger.warning(f"Word not found in dictionary: {word}")
-                console.print(f"  [yellow]⊘[/yellow] [dim]{word}[/dim] - not found in dictionary")
-                skipped += 1
-                continue
+        audio_urls = dictionary_client.extract_audio_urls(word_data)
+        if not audio_urls:
+            logger.warning(f"No audio URLs found for {word}")
+            console.print(f"  [yellow]⊘[/yellow] [dim]{word}[/dim] - no audio")
+            skipped += 1
+            continue
 
-            # Extract definition and audio URLs
-            try:
-                definition = dictionary_client.extract_definition(word_data)
-            except ValueError as e:
-                logger.warning(f"No definition found for {word}: {e}")
-                console.print(f"  [yellow]⊘[/yellow] [dim]{word}[/dim] - no definition")
-                skipped += 1
-                continue
+        # Download and process audio (use first URL)
+        audio_url = audio_urls[0]
+        logger.debug(f"Downloading audio from {audio_url}")
+        audio_bytes = audio_processor.download_audio(audio_url, session)
 
-            audio_urls = dictionary_client.extract_audio_urls(word_data)
-            if not audio_urls:
-                logger.warning(f"No audio URLs found for {word}")
-                console.print(f"  [yellow]⊘[/yellow] [dim]{word}[/dim] - no audio")
-                skipped += 1
-                continue
+        if audio_bytes is None:
+            logger.warning(f"Failed to download audio for {word}")
+            console.print(f"  [yellow]⊘[/yellow] [dim]{word}[/dim] - audio download failed")
+            skipped += 1
+            continue
 
-            # Download and process audio (use first URL)
-            audio_url = audio_urls[0]
-            logger.debug(f"Downloading audio from {audio_url}")
-            audio_bytes = audio_processor.download_audio(audio_url, session)
+        # Process audio to MP3
+        audio_filename, mp3_bytes = audio_processor.process_audio(audio_bytes, word)
 
-            if audio_bytes is None:
-                logger.warning(f"Failed to download audio for {word}")
-                console.print(f"  [yellow]⊘[/yellow] [dim]{word}[/dim] - audio download failed")
-                skipped += 1
-                continue
+        # Add to APKG
+        apkg_builder.add_word(word, definition, audio_filename, mp3_bytes)
 
-            # Process audio to MP3
-            audio_filename, mp3_bytes = audio_processor.process_audio(audio_bytes, word)
-
-            # Add to APKG
-            apkg_builder.add_word(word, definition, audio_filename, mp3_bytes)
-
-            logger.info(f"Successfully processed word: {word}")
-            successful += 1
-
-        except Exception as e:
-            logger.error(f"Failed to process word '{word}': {e}", exc_info=True)
-            console.print(f"  [red]✗[/red] [dim]{word}[/dim] - error: {e}")
-            failed += 1
+        logger.info(f"Successfully processed word: {word}")
+        successful += 1
 
     # Print summary
     console.print("\n[bold]Processing Summary:[/bold]")

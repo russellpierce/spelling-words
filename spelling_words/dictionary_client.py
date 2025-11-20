@@ -24,7 +24,7 @@ class MerriamWebsterClient:
         base_url: Base URL for the Merriam-Webster Elementary Dictionary API
     """
 
-    BASE_URL = "https://dictionaryapi.com/api/v3/references/sd/json"
+    BASE_URL = "https://dictionaryapi.com/api/v3/references/sd2/json"
     AUDIO_BASE_URL = "https://media.merriam-webster.com/audio/prons/en/us/mp3"
     MAX_RETRIES = 3
     RETRY_DELAY = 2  # seconds
@@ -80,6 +80,17 @@ class MerriamWebsterClient:
                     f"Fetching word data for '{word}' (attempt {attempt + 1}/{self.MAX_RETRIES})"
                 )
                 response = self.session.get(url, params=params, timeout=10)
+                logger.debug(f"Response status code: {response.status_code}")
+                try:
+                    logger.debug(f"Response headers: {dict(response.headers)}")
+                except (TypeError, AttributeError):
+                    # In tests, headers might be mocked and not convertible to dict
+                    logger.debug(f"Response headers: {response.headers}")
+                try:
+                    logger.debug(f"Response content (first 500 chars): {response.text[:500]}")
+                except (TypeError, AttributeError):
+                    # In tests, text might be mocked and not subscriptable
+                    logger.debug(f"Response content: {response.text}")
                 response.raise_for_status()
 
                 data = response.json()
