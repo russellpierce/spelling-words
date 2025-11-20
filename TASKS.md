@@ -75,20 +75,28 @@ Create basic APKG files with audio and definitions for spelling test preparation
 
 ### 3. Logging Setup (`spelling_words/__init__.py`)
 
+**Status**: ✅ COMPLETE - All tests passing (8/8)
+
 **Write tests FIRST** (`tests/test_logging.py`):
-- [ ] Create test file with TEST INTEGRITY directive at top
-- [ ] Test logger configuration initializes correctly
-- [ ] Test log format includes timestamps
-- [ ] Test log level defaults to INFO
-- [ ] Test log level can be set to DEBUG
-- [ ] Test exception hook logs uncaught exceptions
-- [ ] Run tests to verify they fail (red)
+- [x] Create test file with TEST INTEGRITY directive at top
+- [x] Test logger configuration initializes correctly
+- [x] Test log format includes timestamps
+- [x] Test log level defaults to INFO
+- [x] Test log level can be set to DEBUG
+- [x] Test exception hook logs uncaught exceptions
+- [x] Run tests to verify they fail (red)
 
 **Then implement**:
-- [ ] Import and configure loguru logger
-- [ ] Set default log format with timestamps
-- [ ] Configure log level (INFO by default, DEBUG if --verbose)
-- [ ] Add exception hook to automatically log uncaught exceptions with full context
+- [x] Import and configure loguru logger
+- [x] Set default log format with timestamps
+- [x] Configure log level (INFO by default, DEBUG if --verbose)
+- [x] Add exception hook to automatically log uncaught exceptions with full context
+
+**Implementation notes**:
+- Uses loguru for flexible logging with colorized stderr output
+- File rotation (10 MB) and retention (1 week) configured
+- Formats include timestamps, log levels, and source location (name:function:line)
+- Coverage: 88% (only KeyboardInterrupt handler path uncovered)
 
 ### 4. Word List Manager (`spelling_words/word_list.py`)
 
