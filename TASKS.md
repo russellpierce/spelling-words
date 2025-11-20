@@ -351,23 +351,23 @@ Create basic APKG files with audio and definitions for spelling test preparation
 
 ### 11. Testing and Validation
 
-- [ ] Create `tests/fixtures/test_words.txt` with 5-10 common words
+- [x] Create `tests/fixtures/test_words.txt` with 5-10 common words
 - [ ] Manual testing sequence:
-  - [ ] Run: `uv run python -m spelling_words -w tests/fixtures/test_words.txt -o test.apkg`
+  - [ ] Run: `uv run spelling-words -w tests/fixtures/test_words.txt -o test.apkg`
   - [ ] Verify APKG created
   - [ ] Check cache directory has SQLite database
   - [ ] Run again - should be much faster (cached)
   - [ ] Load test.apkg in AnkiDroid
   - [ ] Verify cards show audio, definition, and word
   - [ ] Test with 100+ word list for scalability
-- [ ] Verify no secrets in git history
+- [x] Verify no secrets in git history
 
 ### 12. Documentation
 
-- [ ] Create `README_LLM.md` with:
-  - [ ] Installation: uv setup, ffmpeg requirement
-  - [ ] Configuration: .env setup with API keys
-  - [ ] Usage examples
-  - [ ] Development setup
-- [ ] Add docstrings to all functions (Google-style)
-- [ ] Add inline comments for complex logic (audio URL parsing, etc.)
+- [x] Create `README_LLM.md` with:
+  - [x] Installation: uv setup, ffmpeg requirement
+  - [x] Configuration: .env setup with API keys
+  - [x] Usage examples
+  - [x] Development setup
+- [x] Add docstrings to all functions (Google-style)
+- [x] Add inline comments for complex logic (audio URL parsing, etc.)
