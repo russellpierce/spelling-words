@@ -268,6 +268,43 @@ With coverage:
 uv run pytest --cov=spelling_words
 ```
 
+### Code Quality
+
+#### Linting and Formatting with Ruff
+
+This project uses [ruff](https://github.com/astral-sh/ruff) for fast linting and code formatting:
+
+```bash
+# Check for linting issues
+uv run ruff check .
+
+# Auto-fix linting issues
+uv run ruff check --fix .
+
+# Format code
+uv run ruff format .
+```
+
+#### Pre-commit Hooks
+
+Install pre-commit hooks to automatically check code quality before each commit:
+
+```bash
+# One-time setup after cloning
+uv run pre-commit install
+
+# Manually run all hooks
+uv run pre-commit run --all-files
+```
+
+Pre-commit hooks will automatically:
+- Run ruff linting with auto-fix
+- Format code with ruff
+- Remove trailing whitespace
+- Fix end-of-file issues
+- Check YAML syntax
+- Detect private keys
+
 ### Code Style
 
 This project follows the coding standards in `CLAUDE.md`:
@@ -276,6 +313,7 @@ This project follows the coding standards in `CLAUDE.md`:
 - Always log errors with stack traces (`loguru` handles this automatically)
 - Use type hints for all function parameters
 - Document all functions with docstrings
+- Code is automatically formatted with ruff (100 character line length)
 
 ## Troubleshooting
 

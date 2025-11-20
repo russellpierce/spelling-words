@@ -56,6 +56,8 @@ This project leverages established, well-maintained Python packages rather than 
 
 - **pytest** - Testing framework
 - **pytest-cov** - Code coverage reporting
+- **ruff** - Fast Python linter and formatter (replaces flake8, black, isort)
+- **pre-commit** - Git hook framework for running checks before commits
 
 ## System Architecture
 
@@ -292,8 +294,11 @@ Where `word` is the lowercase spelling.
   ```
 - [ ] Set up `pyproject.toml` with dependencies:
   - Core: `genanki`, `requests-cache`, `pydantic-settings`, `click`, `rich`, `loguru`, `pydub`, `requests`
-  - Dev: `pytest`, `pytest-cov`
+  - Dev: `pytest`, `pytest-cov`, `ruff`, `pre-commit`
 - [ ] Configure CLI entry point in `pyproject.toml`
+- [ ] Configure ruff settings in `pyproject.toml` (linting rules, formatting)
+- [ ] Create `.pre-commit-config.yaml` with ruff hooks
+- [ ] Install pre-commit hooks: `uv run pre-commit install`
 - [ ] Update `.gitignore` (already includes `.env`)
 - [ ] Verify ffmpeg is documented in README_LLM.md
 

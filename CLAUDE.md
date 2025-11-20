@@ -333,6 +333,75 @@ def test_validate_word_empty():
         manager.validate_word("")
 ```
 
+## Code Quality Tools
+
+### Ruff - Linting and Formatting
+
+This project uses **ruff** for both linting and code formatting. Ruff is an extremely fast Python linter and formatter written in Rust that replaces multiple tools (flake8, black, isort, etc.).
+
+**Running ruff manually**:
+```bash
+# Check for linting issues
+uv run ruff check .
+
+# Auto-fix linting issues
+uv run ruff check --fix .
+
+# Format code
+uv run ruff format .
+
+# Check and format in one go
+uv run ruff check --fix . && uv run ruff format .
+```
+
+**Configuration**: Ruff is configured in `pyproject.toml` with:
+- Line length: 100 characters
+- Python target: 3.12
+- Enabled rule sets: pycodestyle, pyflakes, isort, pep8-naming, pyupgrade, bugbear, and more
+- Auto-fix enabled for most rules
+
+**Key rules enforced**:
+- Import sorting (isort)
+- PEP 8 naming conventions
+- Bugbear patterns (common bugs)
+- Use of pathlib over os.path
+- Modern Python syntax (pyupgrade)
+- Simplified code patterns
+
+### Pre-commit Hooks
+
+This project uses **pre-commit** to automatically run checks before each commit.
+
+**Installation**:
+```bash
+# Install pre-commit hooks (run once after cloning)
+uv run pre-commit install
+```
+
+**What runs on each commit**:
+1. **Ruff linting** with auto-fix
+2. **Ruff formatting**
+3. **Trailing whitespace removal**
+4. **End-of-file fixer**
+5. **YAML syntax check**
+6. **Large file check** (max 1MB)
+7. **Merge conflict detection**
+8. **Private key detection**
+
+**Manual execution**:
+```bash
+# Run on all files
+uv run pre-commit run --all-files
+
+# Run on specific files
+uv run pre-commit run --files spelling_words/cli.py
+
+# Skip hooks temporarily (discouraged)
+git commit --no-verify
+```
+
+**Bypassing hooks**: Only skip pre-commit hooks if absolutely necessary (e.g., emergency hotfix). The `--no-verify` flag should be rare.
+
 ## Git Workflow
 
 ### Branching
@@ -353,9 +422,14 @@ Add audio concatenation functionality
 
 ### Before Committing
 
-1. Run tests: `uv run pytest`
-2. Check for common issues
-3. Review changes: `git diff`
+Pre-commit hooks will automatically run, but you can also run checks manually:
+
+1. **Format and lint code**: `uv run ruff check --fix . && uv run ruff format .`
+2. **Run tests**: `uv run pytest`
+3. **Run all pre-commit checks**: `uv run pre-commit run --all-files`
+4. **Review changes**: `git diff`
+
+**Note**: If pre-commit hooks are installed, steps 1 and 3 will run automatically on `git commit`.
 
 ## Common Patterns
 
