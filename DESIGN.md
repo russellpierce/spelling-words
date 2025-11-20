@@ -269,6 +269,7 @@ Where `word` is the lowercase spelling.
 - Generates valid APKG file loadable in AnkiDroid
 - Cards display audio and definition correctly
 - Reduces redundant downloads and API calls via agressive local caching for any 2xx returned call.  Persist to disk.
+- If not operating in an environment where .env shows LOCAL_TESTING=True, only allow for one API call per test as cache won't persist across testing runs.
 
 #### MVP Implementation Tasks
 
@@ -583,17 +584,15 @@ Per project coding standards:
 2. **Try/catch only for known, resolvable exceptions**
 3. **Log raised errors with full stack traces**
 4. **Validate inputs early** (word lists, API keys, file paths)
-5. **Graceful degradation** (fallback APIs, skip problematic words)
+5. **FAIL FAST** If we hit a problem, fail loud and clearly.  Everything should be cached, so we generally shouldn't mind reprocessing from the start
+6. **Log Stack Traces**.  If raising an error using the logging package, be sure to use .exception rather than .error for unhandled errors so we see a stack trace.
 
 ## Testing Strategy
 
 **Phase 1 (MVP)**:
-- Manual testing with small word lists (5-20 words)
 - Verify APKG loads in AnkiDroid
-
-**Phase 2+**:
 - Unit tests for each component
-- Integration tests for full workflow
+- Integration tests for full workflow (use wordlist.txt in the repo root)
 - Test with various edge cases:
   - Words not found in dictionary
   - Words with special characters
