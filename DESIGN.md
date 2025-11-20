@@ -8,6 +8,55 @@ This package automates the creation and updating of Anki (APKG) flashcard decks 
 **Language**: Python 3.x
 **Package Manager**: uv
 
+## Recommended Third-Party Packages
+
+This project leverages established, well-maintained Python packages rather than implementing custom solutions:
+
+### Core Dependencies
+
+- **genanki** - Generate Anki decks programmatically (replaces custom APKG manager)
+  - Handles APKG file creation, SQLite database, media files, and compression
+  - Well-tested library with 2K+ GitHub stars
+  - Latest release: November 2023
+
+- **requests-cache** - Persistent HTTP caching for requests
+  - Provides transparent caching with multiple backend options (SQLite, filesystem, etc.)
+  - Supports cache expiration and HTTP cache-control headers
+  - Latest release: June 2024 (v1.2.1)
+
+- **pydantic-settings** - Settings management with environment variables
+  - Type-safe configuration loading from .env files
+  - Automatic validation of required settings
+  - Integrates seamlessly with pydantic for data validation
+
+- **click** - Composable command-line interfaces
+  - Decorator-based CLI framework
+  - Built-in help generation, parameter validation
+  - Industry standard for Python CLIs
+
+- **rich** - Beautiful console output and progress bars
+  - Colored text, tables, progress bars, and panels
+  - Better than basic print() for user-facing CLI
+  - Integrates well with click
+
+- **loguru** - Simplified Python logging
+  - Pre-configured with sensible defaults
+  - Automatic exception logging with full context
+  - Simpler API than Python's standard logging module
+
+- **pydub** - Audio file manipulation
+  - Simple API for loading, concatenating, and converting audio
+  - Requires ffmpeg system dependency
+
+- **requests** - HTTP client for API calls
+  - Industry standard for HTTP requests
+  - Works seamlessly with requests-cache
+
+### Development Dependencies
+
+- **pytest** - Testing framework
+- **pytest-cov** - Code coverage reporting
+
 ## System Architecture
 
 ### High-Level Components
@@ -51,96 +100,118 @@ This package automates the creation and updating of Anki (APKG) flashcard decks 
 
 ## Core Components
 
-### 1. Word List Manager
+### 1. Word List Manager (`spelling_words/word_list.py`)
 
 **Purpose**: Handle input of word lists
 
 **Responsibilities**:
-- Read word lists from file (TXT only, new line seperated)
-- Validate word format
-- Handle duplicates
+- Read word lists from file (TXT only, newline separated)
+- Validate word format (alphabetic with hyphens/apostrophes allowed)
+- Remove duplicates while preserving order
 
-**MVP**: Simple text file input (one word per line)
+**Implementation**: Simple Python class with file I/O and validation logic
 
-### 2. Dictionary API Client
+**MVP**: Text file input (one word per line)
 
-**Purpose**: Fetch word definitions and audio URLs
+### 2. Configuration Manager (`spelling_words/config.py`)
+
+**Purpose**: Manage application configuration from environment variables
+
+**Technology**: **pydantic-settings**
 
 **Responsibilities**:
-- Query Merriam-Webster Elementary Dictionary API (primary)
-- Fallback to Merriam-Webster Collegiate Dictionary API
-- Parse API responses
-- Extract definitions, audio URLs, and pronunciation variants
-- Handle API errors and rate limiting
-- Manage API key from environment variables
+- Load API keys from `.env` file with type validation
+- Provide validated configuration throughout application
+- Raise clear errors for missing required settings
 
-N.b. we have a limit of 1000 API calls per day.
+**Environment Variables**:
+- `MW_ELEMENTARY_API_KEY`: Merriam-Webster Elementary Dictionary API key (required)
+- `MW_COLLEGIATE_API_KEY`: Merriam-Webster Collegiate Dictionary API key (optional, future)
+- `CACHE_DIR`: Cache directory path (optional, default: `.cache/`)
+
+**Note**: We have a limit of 1000 API calls per day for Merriam-Webster.
+
+### 3. Dictionary API Client (`spelling_words/dictionary_client.py`)
+
+**Purpose**: Fetch word definitions and audio URLs with automatic caching
+
+**Technology**: **requests** + **requests-cache**
+
+**Responsibilities**:
+- Query Merriam-Webster Elementary Dictionary API
+- Parse API responses for definitions and audio URLs
+- Automatic HTTP caching (configured via requests-cache)
+- Handle API errors and timeouts with retry logic
+- Extract multiple pronunciation variants
 
 **Data Retrieved**:
-- Word definitions
+- Word definitions (simplified for flashcards)
 - Audio file URLs (may be multiple for different pronunciations)
 - Pronunciation symbols (future)
 - Etymology/language tips (future)
 
-### 3. Audio Downloader
+**Caching Strategy**: requests-cache with SQLite backend caches all 2xx responses persistently
 
-**Purpose**: Download audio files from dictionary APIs
+### 4. Audio Downloader (`spelling_words/audio_downloader.py`)
+
+**Purpose**: Download and cache audio files
+
+**Technology**: **requests** + **requests-cache**
 
 **Responsibilities**:
-- Download audio files from URLs
-- Handle multiple pronunciations per word
-- Cache downloaded files
-- Validate audio file format
-- Handle network errors with retry logic
+- Download audio files from URLs with automatic caching
+- Validate audio content (check Content-Type headers)
+- Handle network errors with exponential backoff retry
+- MVP: Download first pronunciation only
 
-### 4. Audio Processor
+**Caching**: Leverages requests-cache for automatic HTTP-level caching
+
+### 5. Audio Processor (`spelling_words/audio_processor.py`)
 
 **Purpose**: Process and format audio for Anki
 
-**Responsibilities**:
-- Load audio files (MP3, WAV, etc.)
-- Concatenate multiple pronunciations with 1-second gaps
-- Convert to target format (MP3 recommended)
-- Normalize audio levels (optional, future enhancement)
-- Generate unique filenames
-
-**Dependencies**: pydub, ffmpeg (system)
-
-### 5. APKG Manager
-
-**Purpose**: Create or update APKG files
+**Technology**: **pydub** (requires **ffmpeg** system dependency)
 
 **Responsibilities**:
-- Read and decompress existing APKG files
-- Parse SQLite database (collection.anki21b)
-- Extract model ID from existing notes
-- Generate new note IDs (millisecond timestamp)
-- Generate GUIDs (random 10-character strings)
-- Format note fields with `\x1f` separator
-- Update notes table in SQLite database
-- Manage media index mapping
-- Compress media files with Zstandard
-- Recompress SQLite database
-- Package everything into new APKG file
+- Load and validate audio files
+- Concatenate multiple pronunciations with 1-second gaps (Phase 2)
+- Convert to MP3 format with consistent bitrate (128k)
+- Generate sanitized filenames
 
-**Key Operations**:
-- Decompress: `zstandard.ZstdDecompressor()`
-- Compress: `zstandard.ZstdCompressor()`
-- Database: `sqlite3` module
-- Archive: `zipfile` module
+**MVP**: Simple pass-through or basic MP3 conversion
 
-### 6. Configuration Manager
+### 6. APKG Manager (`spelling_words/apkg_manager.py`)
 
-**Purpose**: Manage application configuration
+**Purpose**: Generate Anki deck packages
+
+**Technology**: **genanki**
 
 **Responsibilities**:
-- Load API keys from `.env` file
-- Provide configuration access throughout application
-- Validate required configuration
+- Create Anki Model (card template) for spelling words
+- Generate Notes with word, definition, and audio
+- Add media files (audio) to package
+- Export as .apkg file
 
-**Environment Variables**:
-- `MW_ELEMENTARY_API_KEY`: Merriam-Webster Elementary Dictionary API key
-- `MW_COLLEGIATE_API_KEY`: Merriam-Webster Collegiate Dictionary API key (fallback)
+**Benefits of genanki**:
+- Eliminates need for manual SQLite operations
+- Handles Zstandard compression automatically
+- Manages media file indexing
+- Well-tested with the Anki ecosystem
+
+**Note**: This replaces the complex custom APKG manager with a simple wrapper around genanki
+
+### 7. CLI (`spelling_words/cli.py`)
+
+**Purpose**: Command-line interface
+
+**Technology**: **click** + **rich**
+
+**Responsibilities**:
+- Parse command-line arguments
+- Display rich progress bars (via rich)
+- Orchestrate the processing workflow
+- Display colored, formatted output
+- Handle errors gracefully with user-friendly messages
 
 ## Card Structure
 
@@ -203,223 +274,194 @@ Where `word` is the lowercase spelling.
 
 **1. Project Setup**
 - [ ] Initialize project with uv (`uv init`)
-- [ ] Create project structure (directories for `spelling_words/`, `tests/`, etc.)
-- [ ] Set up `pyproject.toml` with project metadata and dependencies
-- [ ] Add initial dependencies: `zstandard`, `pydub`, `requests`, `python-dotenv`
-- [ ] Create `.gitignore` (already exists, includes `.env`)
-- [ ] Verify ffmpeg system dependency is documented in setup instructions
+- [ ] Create project structure:
+  ```
+  spelling_words/
+  ├── __init__.py
+  ├── __main__.py
+  ├── cli.py
+  ├── config.py
+  ├── word_list.py
+  ├── dictionary_client.py
+  ├── audio_processor.py
+  └── apkg_manager.py
+  tests/
+  └── fixtures/
+      └── test_words.txt
+  ```
+- [ ] Set up `pyproject.toml` with dependencies:
+  - Core: `genanki`, `requests-cache`, `pydantic-settings`, `click`, `rich`, `loguru`, `pydub`, `requests`
+  - Dev: `pytest`, `pytest-cov`
+- [ ] Configure CLI entry point in `pyproject.toml`
+- [ ] Update `.gitignore` (already includes `.env`)
+- [ ] Verify ffmpeg is documented in README_LLM.md
 
 **2. Configuration Module (`spelling_words/config.py`)**
-- [ ] Create `Config` class to load environment variables
-- [ ] Load API keys from `.env` file using `python-dotenv`
-- [ ] Validate that `MW_ELEMENTARY_API_KEY` is present and non-empty
-- [ ] Provide default cache directory path (e.g., `.cache/`)
-- [ ] Raise `ValueError` with helpful message if required config is missing
-- [ ] Add logging configuration setup (log level, format)
+- [ ] Create `Settings` class inheriting from `pydantic_settings.BaseSettings`
+- [ ] Define fields:
+  - [ ] `mw_elementary_api_key: str` (required)
+  - [ ] `cache_dir: str = ".cache/"` (optional with default)
+- [ ] Configure to load from `.env` file: `model_config = SettingsConfigDict(env_file='.env')`
+- [ ] Create `get_settings()` function that returns singleton Settings instance
+- [ ] Settings will automatically validate and raise clear errors if required fields missing
 
-**3. Word List Manager (`spelling_words/word_list.py`)**
+**3. Logging Setup (`spelling_words/__init__.py`)**
+- [ ] Import and configure loguru logger
+- [ ] Set default log format with timestamps
+- [ ] Configure log level (INFO by default, DEBUG if --verbose)
+- [ ] Add exception hook to automatically log uncaught exceptions with full context
+
+**4. Word List Manager (`spelling_words/word_list.py`)**
 - [ ] Create `WordListManager` class
-- [ ] Implement `load_from_file(file_path: str) -> list[str]` method
-  - [ ] Read file line by line
-  - [ ] Strip whitespace from each line
-  - [ ] Skip empty lines
-  - [ ] Convert all words to lowercase for consistency
-  - [ ] Raise `FileNotFoundError` if file doesn't exist
-  - [ ] Raise `ValueError` if file is empty
-- [ ] Implement `validate_word(word: str) -> bool` method
-  - [ ] Check word is non-empty after stripping
-  - [ ] Check word contains only alphabetic characters (allow hyphens/apostrophes)
-  - [ ] Log warning for invalid words
-- [ ] Implement `remove_duplicates(words: list[str]) -> list[str]`
-  - [ ] Preserve order while removing duplicates
-  - [ ] Log how many duplicates were removed
-- [ ] Add comprehensive logging throughout
+- [ ] Implement `load_from_file(file_path: str) -> list[str]`:
+  - [ ] Read file with proper encoding handling
+  - [ ] Strip whitespace, skip empty lines
+  - [ ] Convert to lowercase
+  - [ ] Validate format (alphabetic + hyphens/apostrophes)
+  - [ ] Raise `FileNotFoundError` or `ValueError` as appropriate
+- [ ] Implement `remove_duplicates(words: list[str]) -> list[str]`:
+  - [ ] Use `dict.fromkeys()` to preserve order
+  - [ ] Log count of duplicates removed
+- [ ] Use loguru for all logging
 
-**4. Cache Manager (`spelling_words/cache.py`)**
-- [ ] Create `CacheManager` class for disk-based caching
-- [ ] Implement `__init__(cache_dir: str)` to set up cache directory
-  - [ ] Create cache directory if it doesn't exist
-  - [ ] Create subdirectories: `api_responses/`, `audio/`
-- [ ] Implement `get_cache_key(url: str, params: dict) -> str`
-  - [ ] Generate deterministic hash from URL and parameters
-  - [ ] Use hashlib.sha256 for key generation
-- [ ] Implement `get_cached_api_response(cache_key: str) -> dict | None`
-  - [ ] Check if cache file exists in `api_responses/`
-  - [ ] Read and return JSON data if exists
-  - [ ] Return None if not cached
-- [ ] Implement `cache_api_response(cache_key: str, response_data: dict, status_code: int)`
-  - [ ] Only cache 2xx responses
-  - [ ] Store response data as JSON with metadata (timestamp, status code)
-  - [ ] Handle write errors gracefully (log but don't fail)
-- [ ] Implement `get_cached_audio(filename: str) -> bytes | None`
-  - [ ] Check if audio file exists in `audio/` directory
-  - [ ] Return file contents as bytes if exists
-- [ ] Implement `cache_audio(filename: str, audio_data: bytes)`
-  - [ ] Write audio bytes to `audio/` directory
-  - [ ] Handle write errors gracefully
+**5. HTTP Session with Caching (`spelling_words/dictionary_client.py`)**
+- [ ] Import `requests_cache`
+- [ ] Create cached session:
+  ```python
+  session = requests_cache.CachedSession(
+      'spelling_words_cache',
+      backend='sqlite',
+      expire_after=timedelta(days=30)
+  )
+  ```
+- [ ] Use this session for all HTTP requests (API and audio downloads)
+- [ ] Caching is automatic - no manual cache checking needed!
 
-**5. Dictionary API Client (`spelling_words/dictionary_client.py`)**
+**6. Dictionary API Client (`spelling_words/dictionary_client.py`)**
 - [ ] Create `MerriamWebsterClient` class
-- [ ] Implement `__init__(api_key: str, cache_manager: CacheManager)`
-  - [ ] Validate API key is non-empty
-  - [ ] Set base URL for Elementary Dictionary API
-  - [ ] Store cache_manager reference
-- [ ] Implement `get_word_data(word: str) -> dict | None`
-  - [ ] Check cache first using cache_manager
-  - [ ] If cached, return cached response
-  - [ ] Build API URL: `https://dictionaryapi.com/api/v3/references/sd/json/{word}`
-  - [ ] Make GET request with API key parameter
-  - [ ] Set timeout to 10 seconds
-  - [ ] Handle `requests.Timeout` with retry logic (max 3 attempts, exponential backoff)
-  - [ ] Handle `requests.HTTPError` appropriately
-  - [ ] Cache 2xx responses using cache_manager
-  - [ ] Return parsed JSON response
-  - [ ] Return None if word not found (check for "suggestion" response)
-  - [ ] Log all API calls and results
-- [ ] Implement `extract_definition(word_data: dict) -> str`
-  - [ ] Parse JSON response structure to find first definition
-  - [ ] Handle missing/malformed data gracefully
-  - [ ] Return simplified definition text suitable for flashcard
+- [ ] `__init__(api_key: str, session: CachedSession)`:
+  - [ ] Validate API key is non-empty (raise `ValueError`)
+  - [ ] Store session and base URL
+- [ ] Implement `get_word_data(word: str) -> dict | None`:
+  - [ ] Make GET request using cached session (automatic caching!)
+  - [ ] URL: `f"https://dictionaryapi.com/api/v3/references/sd/json/{word}"`
+  - [ ] Timeout: 10 seconds
+  - [ ] Retry on `requests.Timeout` (max 3 attempts, exponential backoff)
+  - [ ] Return None if word not found (check for suggestions response)
+  - [ ] Use loguru for logging
+- [ ] Implement `extract_definition(word_data: dict) -> str`:
+  - [ ] Parse JSON structure for first definition
+  - [ ] Simplify for flashcard use
   - [ ] Raise `ValueError` if no definition found
-- [ ] Implement `extract_audio_urls(word_data: dict) -> list[str]`
-  - [ ] Parse JSON to find audio file references
-  - [ ] Build full audio URLs from file references
-  - [ ] Handle subdirectory logic (bix, gg, number prefixes)
-  - [ ] Return list of audio URLs (may be empty if no audio)
-  - [ ] Log if no audio found for word
-
-**6. Audio Downloader (`spelling_words/audio_downloader.py`)**
-- [ ] Create `AudioDownloader` class
-- [ ] Implement `__init__(cache_manager: CacheManager)`
-  - [ ] Store cache_manager reference
-- [ ] Implement `download_audio(url: str, word: str) -> bytes | None`
-  - [ ] Generate cache filename from word and URL
-  - [ ] Check cache first using cache_manager
-  - [ ] If cached, return cached audio
-  - [ ] Make GET request with timeout
-  - [ ] Handle `requests.Timeout` with retry (max 3 attempts)
-  - [ ] Validate response is audio (check Content-Type header)
-  - [ ] Cache downloaded audio using cache_manager
-  - [ ] Return audio bytes
-  - [ ] Return None if download fails after retries
-  - [ ] Log all download attempts and results
-- [ ] Implement `download_first_pronunciation(urls: list[str], word: str) -> bytes | None`
-  - [ ] For MVP, just download first URL from list
-  - [ ] Use `download_audio()` method
-  - [ ] Return None if urls list is empty
-  - [ ] Log if multiple pronunciations exist (note for Phase 2)
+- [ ] Implement `extract_audio_urls(word_data: dict) -> list[str]`:
+  - [ ] Parse JSON for audio references
+  - [ ] Build full URLs with proper subdirectory handling
+  - [ ] Return empty list if no audio
 
 **7. Audio Processor (`spelling_words/audio_processor.py`)**
 - [ ] Create `AudioProcessor` class
-- [ ] Implement `validate_audio(audio_bytes: bytes) -> bool`
-  - [ ] Try to load audio using pydub
-  - [ ] Catch `pydub.exceptions.CouldntDecodeError`
-  - [ ] Return True if valid, False otherwise
-- [ ] Implement `convert_to_mp3(audio_bytes: bytes, output_filename: str) -> bytes`
-  - [ ] Load audio using pydub `AudioSegment`
-  - [ ] Export as MP3 with 128k bitrate
-  - [ ] Return MP3 bytes
-  - [ ] Raise specific exception if conversion fails
-  - [ ] Log conversion details
-- [ ] Implement `generate_audio_filename(word: str) -> str`
-  - [ ] Create sanitized filename from word
-  - [ ] Add .mp3 extension
-  - [ ] Ensure filename is unique (add counter if needed)
-  - [ ] Return filename only (not full path)
+- [ ] Implement `download_audio(url: str, session: CachedSession) -> bytes | None`:
+  - [ ] Use cached session (automatic caching!)
+  - [ ] Retry on timeout (max 3 attempts)
+  - [ ] Validate Content-Type header
+  - [ ] Return bytes or None
+- [ ] Implement `process_audio(audio_bytes: bytes, word: str) -> tuple[str, bytes]`:
+  - [ ] Load with pydub `AudioSegment.from_file()`
+  - [ ] Convert to MP3 with 128k bitrate
+  - [ ] Generate sanitized filename: `f"{word.replace(' ', '_')}.mp3"`
+  - [ ] Return (filename, mp3_bytes)
+  - [ ] Catch `pydub.exceptions.CouldntDecodeError` and raise specific error
 
 **8. APKG Manager (`spelling_words/apkg_manager.py`)**
-- [ ] Create `APKGManager` class
-- [ ] Implement `__init__(output_path: str)`
-  - [ ] Store output path for final APKG
-  - [ ] Initialize empty media dict
-  - [ ] Initialize empty notes list
-- [ ] Implement `create_note(word: str, definition: str, audio_filename: str) -> dict`
-  - [ ] Generate note ID: `int(time.time() * 1000)`
-  - [ ] Generate GUID: random 10-character alphanumeric string
-  - [ ] Set mid (model ID) to 1 (basic Anki model)
-  - [ ] Format fields: `f"[sound:{audio_filename}]\x1fDefinition: {definition}\x1f{word.lower()}"`
-  - [ ] Set sfld to first field (for sorting)
-  - [ ] Calculate checksum using `sha1` of first field
-  - [ ] Return note dict with all required fields
-- [ ] Implement `add_note(note: dict)`
-  - [ ] Add note to internal notes list
-  - [ ] Log note creation
-- [ ] Implement `add_media_file(filename: str, audio_data: bytes)`
-  - [ ] Add to media dict with next available index
-  - [ ] Store audio data for later compression
-  - [ ] Log media file addition
-- [ ] Implement `create_collection_db() -> bytes`
-  - [ ] Create in-memory SQLite database
-  - [ ] Create `notes` table with proper schema (id, guid, mid, mod, usn, tags, flds, sfld, csum, flags, data)
-  - [ ] Create `cards` table with basic schema
-  - [ ] Insert all notes into notes table using parameterized queries
-  - [ ] Create corresponding cards for each note
-  - [ ] Commit and get database as bytes
-  - [ ] Return uncompressed DB bytes
-- [ ] Implement `build_apkg()`
-  - [ ] Create collection database
-  - [ ] Compress database with Zstandard
-  - [ ] Create ZIP file at output_path
-  - [ ] Add compressed database as `collection.anki21b`
-  - [ ] Create media JSON mapping (numeric keys to filenames)
-  - [ ] Add media JSON as `media` file in ZIP
-  - [ ] Compress and add each audio file as numbered file (0, 1, 2, ...)
-  - [ ] Add empty `collection.anki2` for backwards compatibility
-  - [ ] Close ZIP file
-  - [ ] Log APKG creation success
-  - [ ] Return output path
+- [ ] Import genanki
+- [ ] Create Anki Model for spelling cards:
+  ```python
+  SPELLING_MODEL = genanki.Model(
+      1607392319,  # Random model ID
+      'Spelling Word Model',
+      fields=[
+          {'name': 'Audio'},
+          {'name': 'Definition'},
+          {'name': 'Word'},
+      ],
+      templates=[
+          {
+              'name': 'Spelling Card',
+              'qfmt': '{{Audio}}<br><br>{{Definition}}',  # Front
+              'afmt': '{{FrontSide}}<hr>{{Word}}',         # Back
+          },
+      ])
+  ```
+- [ ] Create `APKGBuilder` class:
+  - [ ] `__init__(deck_name: str, output_path: str)`:
+    - [ ] Create `genanki.Deck` instance
+    - [ ] Initialize media files list
+  - [ ] `add_word(word: str, definition: str, audio_filename: str, audio_data: bytes)`:
+    - [ ] Create `genanki.Note` with SPELLING_MODEL
+    - [ ] Add to deck
+    - [ ] Track media file
+  - [ ] `build()`:
+    - [ ] Create `genanki.Package` with deck and media files
+    - [ ] Call `package.write_to_file(output_path)`
+    - [ ] That's it! genanki handles everything else.
 
 **9. Command-Line Interface (`spelling_words/cli.py`)**
-- [ ] Create main CLI function using argparse or click
-- [ ] Add argument: `--words` or `-w` for word list file path (required)
-- [ ] Add argument: `--output` or `-o` for output APKG path (optional, default: `output.apkg`)
-- [ ] Add argument: `--verbose` or `-v` for debug logging
+- [ ] Use `@click.command()` decorator pattern
+- [ ] Define options:
+  - [ ] `@click.option('--words', '-w', required=True, help='Path to word list file')`
+  - [ ] `@click.option('--output', '-o', default='output.apkg', help='Output APKG path')`
+  - [ ] `@click.option('--verbose', '-v', is_flag=True, help='Enable debug logging')`
 - [ ] Implement main workflow:
-  - [ ] Load configuration (API keys, etc.)
-  - [ ] Initialize all components (cache, API client, downloaders, etc.)
-  - [ ] Load word list
-  - [ ] Remove duplicates
-  - [ ] For each word:
-    - [ ] Fetch word data from API
-    - [ ] Extract definition
-    - [ ] Extract audio URLs
-    - [ ] Download first pronunciation
-    - [ ] Validate and convert audio
-    - [ ] Generate audio filename
-    - [ ] Create note
-    - [ ] Add note and media to APKG manager
-    - [ ] Handle errors gracefully (log and skip word on failure)
-  - [ ] Build final APKG file
-  - [ ] Print summary (words processed, words skipped, output path)
-- [ ] Add error handling for missing .env file
-- [ ] Add progress indication (e.g., "Processing word 23/100...")
+  - [ ] Load settings with `get_settings()`
+  - [ ] Configure loguru log level based on --verbose
+  - [ ] Create cached session with requests_cache
+  - [ ] Initialize components (WordListManager, MerriamWebsterClient, AudioProcessor, APKGBuilder)
+  - [ ] Load and deduplicate word list
+  - [ ] Use `rich.progress.track()` for progress bar:
+    ```python
+    from rich.progress import track
+    for word in track(words, description="Processing words..."):
+        # process word
+    ```
+  - [ ] For each word (with error handling):
+    - [ ] Fetch word data
+    - [ ] Extract definition and audio URLs
+    - [ ] Download and process first audio
+    - [ ] Add to APKG builder
+    - [ ] Use `try/except` to log and skip failures
+  - [ ] Build APKG file
+  - [ ] Use `rich.console.Console()` to print summary with colors
+- [ ] Handle missing .env with friendly error message
 
-**10. Package Structure and Entry Point**
-- [ ] Create `spelling_words/__init__.py` with version info
-- [ ] Add `__main__.py` for `python -m spelling_words` support
-- [ ] Configure `pyproject.toml` with CLI entry point
-- [ ] Add package metadata (name, version, description, author)
+**10. Package Entry Points**
+- [ ] `spelling_words/__init__.py`:
+  - [ ] Set `__version__ = "0.1.0"`
+  - [ ] Configure loguru
+  - [ ] Export main classes
+- [ ] `spelling_words/__main__.py`:
+  - [ ] Import and call CLI main function
+  - [ ] Enables `python -m spelling_words`
 
 **11. Testing and Validation**
-- [ ] Create test word list with 5-10 common words (e.g., `tests/fixtures/test_words.txt`)
-- [ ] Manual test: Run CLI with test word list
-- [ ] Manual test: Verify APKG file is created
-- [ ] Manual test: Load APKG in AnkiDroid
-- [ ] Manual test: Verify cards display correctly (audio plays, definition shows)
-- [ ] Manual test: Run again with same word list to verify caching works
-- [ ] Manual test: Run with 100+ word list to verify scalability
-- [ ] Check cache directory contains expected files
-- [ ] Verify no API keys in git history
+- [ ] Create `tests/fixtures/test_words.txt` with 5-10 common words
+- [ ] Manual testing sequence:
+  - [ ] Run: `uv run python -m spelling_words -w tests/fixtures/test_words.txt -o test.apkg`
+  - [ ] Verify APKG created
+  - [ ] Check cache directory has SQLite database
+  - [ ] Run again - should be much faster (cached)
+  - [ ] Load test.apkg in AnkiDroid
+  - [ ] Verify cards show audio, definition, and word
+  - [ ] Test with 100+ word list for scalability
+- [ ] Verify no secrets in git history
 
 **12. Documentation**
-- [ ] Update README.md with:
-  - [ ] Project description
-  - [ ] Installation instructions (uv setup, ffmpeg)
-  - [ ] API key setup (.env file)
-  - [ ] Basic usage examples
-  - [ ] Example word list format
-- [ ] Add inline code comments for complex logic
-- [ ] Ensure all functions have docstrings
+- [ ] Create `README_LLM.md` with:
+  - [ ] Installation: uv setup, ffmpeg requirement
+  - [ ] Configuration: .env setup with API keys
+  - [ ] Usage examples
+  - [ ] Development setup
+- [ ] Add docstrings to all functions (Google-style)
+- [ ] Add inline comments for complex logic (audio URL parsing, etc.)
 
 ### Phase 2: Enhanced Audio Processing
 
