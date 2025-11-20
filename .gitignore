@@ -49,3 +49,6 @@ htmlcov/
 
 # Logs
 *.log
+
+# FFmpeg static build
+bin/
