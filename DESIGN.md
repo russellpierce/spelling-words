@@ -56,10 +56,9 @@ This package automates the creation and updating of Anki (APKG) flashcard decks 
 **Purpose**: Handle input of word lists
 
 **Responsibilities**:
-- Read word lists from file (TXT, CSV, JSON)
+- Read word lists from file (TXT only, new line seperated)
 - Validate word format
 - Handle duplicates
-- Provide word iteration interface
 
 **MVP**: Simple text file input (one word per line)
 
@@ -74,6 +73,8 @@ This package automates the creation and updating of Anki (APKG) flashcard decks 
 - Extract definitions, audio URLs, and pronunciation variants
 - Handle API errors and rate limiting
 - Manage API key from environment variables
+
+N.b. we have a limit of 1000 API calls per day.
 
 **Data Retrieved**:
 - Word definitions
@@ -152,9 +153,9 @@ Definition: <word definition from dictionary>
 ```
 
 **Future Enhancements**:
-- Headscratcher language tips
-- Pronunciation symbols (IPA)
-- Spelling suggestions/hints
+- Etymology
+- Usage examples
+- Part of speech
 
 ### Back of Card (Answer)
 
@@ -165,9 +166,9 @@ word
 Where `word` is the lowercase spelling.
 
 **Future Enhancements**:
-- Etymology
-- Usage examples
-- Part of speech
+- Headscratcher language tips
+- Pronunciation symbols (IPA)
+- Spelling suggestions/hints
 
 ## Development Phases
 
@@ -193,9 +194,10 @@ Where `word` is the lowercase spelling.
 - Basic documentation
 
 **Success Criteria**:
-- Can process a list of 20 common spelling words
+- Can process a list of 100 or more common spelling words
 - Generates valid APKG file loadable in AnkiDroid
 - Cards display audio and definition correctly
+- Reduces redundant downloads and API calls via agressive local caching for any 2xx returned call.  Persist to disk.
 
 ### Phase 2: Enhanced Audio Processing
 
@@ -263,7 +265,7 @@ Where `word` is the lowercase spelling.
 
 ### Phase 5: Advanced Features
 
-**Goal**: Production-ready features and polish
+**Goal**: Production-ready features and polish.  I.e. we aren't doing this in 2025.  Probably not ever.
 
 **Features**:
 - Multiple input formats (CSV, JSON, Google Sheets integration)
