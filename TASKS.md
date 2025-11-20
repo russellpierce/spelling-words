@@ -75,6 +75,16 @@ Create basic APKG files with audio and definitions for spelling test preparation
 
 ### 3. Logging Setup (`spelling_words/__init__.py`)
 
+**Write tests FIRST** (`tests/test_logging.py`):
+- [ ] Create test file with TEST INTEGRITY directive at top
+- [ ] Test logger configuration initializes correctly
+- [ ] Test log format includes timestamps
+- [ ] Test log level defaults to INFO
+- [ ] Test log level can be set to DEBUG
+- [ ] Test exception hook logs uncaught exceptions
+- [ ] Run tests to verify they fail (red)
+
+**Then implement**:
 - [ ] Import and configure loguru logger
 - [ ] Set default log format with timestamps
 - [ ] Configure log level (INFO by default, DEBUG if --verbose)

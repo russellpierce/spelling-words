@@ -40,8 +40,14 @@ echo "1. Checking system dependencies..."
 if command -v ffmpeg &> /dev/null; then
     FFMPEG_VERSION=$(ffmpeg -version 2>&1 | head -n1)
     success "ffmpeg is installed: $FFMPEG_VERSION"
+elif [ -f "$PROJECT_DIR/bin/ffmpeg" ]; then
+    FFMPEG_VERSION=$("$PROJECT_DIR/bin/ffmpeg" -version 2>&1 | head -n1)
+    success "ffmpeg static build installed: $FFMPEG_VERSION"
+    info "Add to PATH: export PATH=\"$PROJECT_DIR/bin:\$PATH\""
 else
-    error "ffmpeg is not installed. Install with: sudo apt-get install ffmpeg"
+    error "ffmpeg is not installed. Options:"
+    echo "   1. Install system-wide: sudo apt-get install ffmpeg"
+    echo "   2. Install static build (no sudo): ./scripts/install_ffmpeg_static.sh"
 fi
 echo ""
 
