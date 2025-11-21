@@ -34,6 +34,19 @@ def configure_verbose_logging() -> None:
     console.print("[dim]Debug logging enabled[/dim]")
 
 
+def configure_quiet_logging() -> None:
+    """Configure quiet logging - suppress library logs and only show warnings/errors."""
+    logger.remove()
+    # Suppress loguru output in quiet mode
+    logger.add(lambda msg: None, level="WARNING")
+
+    # Suppress noisy library loggers
+    import logging
+    logging.getLogger("requests").setLevel(logging.WARNING)
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
+    logging.getLogger("requests_cache").setLevel(logging.WARNING)
+
+
 def load_settings_or_abort() -> Settings:
     """Load settings from .env file or abort with helpful error message."""
     try:
@@ -126,8 +139,9 @@ def main(ctx: click.Context, words_file: Path | None, output_file: Path, verbose
     # Configure logging level
     if verbose:
         configure_verbose_logging()
-
-    console.print("\n[bold blue]Spelling Words APKG Generator[/bold blue]\n")
+        console.print("\n[bold blue]Spelling Words APKG Generator[/bold blue]\n")
+    else:
+        configure_quiet_logging()
 
     # Load settings
     settings = load_settings_or_abort()
@@ -136,7 +150,8 @@ def main(ctx: click.Context, words_file: Path | None, output_file: Path, verbose
     validate_word_file(words_file)
 
     # Initialize components
-    console.print("[dim]Initializing components...[/dim]")
+    if verbose:
+        console.print("[dim]Initializing components...[/dim]")
 
     # Create cached session for HTTP requests
     session = requests_cache.CachedSession(
@@ -152,13 +167,15 @@ def main(ctx: click.Context, words_file: Path | None, output_file: Path, verbose
     collegiate_client = None
     if settings.mw_collegiate_api_key:
         collegiate_client = MerriamWebsterCollegiateClient(settings.mw_collegiate_api_key, session)
-        console.print("[dim]Collegiate dictionary fallback enabled[/dim]")
+        if verbose:
+            console.print("[dim]Collegiate dictionary fallback enabled[/dim]")
 
     audio_processor = AudioProcessor()
     apkg_builder = APKGBuilder("Spelling Words", str(output_file))
 
     # Load word list
-    console.print(f"[dim]Loading words from {words_file}...[/dim]")
+    if verbose:
+        console.print(f"[dim]Loading words from {words_file}...[/dim]")
     try:
         words = word_manager.load_from_file(str(words_file))
         words = word_manager.remove_duplicates(words)
@@ -166,7 +183,8 @@ def main(ctx: click.Context, words_file: Path | None, output_file: Path, verbose
         console.print(f"[bold red]Error:[/bold red] Failed to load word list: {e}")
         raise click.Abort from e
 
-    console.print(f"Loaded {len(words)} words\n")
+    if verbose:
+        console.print(f"Loaded {len(words)} words\n")
 
     # Process words
     process_words(
@@ -177,6 +195,7 @@ def main(ctx: click.Context, words_file: Path | None, output_file: Path, verbose
         apkg_builder=apkg_builder,
         session=session,
         output_file=output_file,
+        verbose=verbose,
     )
 
     # Build APKG if we have any notes
@@ -185,7 +204,8 @@ def main(ctx: click.Context, words_file: Path | None, output_file: Path, verbose
         console.print("APKG file not created")
         raise click.Abort
 
-    console.print("\n[dim]Building APKG file...[/dim]")
+    if verbose:
+        console.print("\n[dim]Building APKG file...[/dim]")
     try:
         apkg_builder.build()
     except Exception as e:
@@ -208,6 +228,7 @@ def process_words(  # noqa: PLR0912, PLR0915
     apkg_builder: APKGBuilder,
     session: requests_cache.CachedSession,
     output_file: Path,
+    verbose: bool = False,
 ) -> None:
     """Process words and add them to the APKG builder.
 
@@ -219,6 +240,7 @@ def process_words(  # noqa: PLR0912, PLR0915
         apkg_builder: APKG builder
         session: Cached session for HTTP requests
         output_file: Output APKG file path (used to generate missing words file)
+        verbose: Whether to show verbose output
     """
     successful = 0
     failed = 0
@@ -239,7 +261,8 @@ def process_words(  # noqa: PLR0912, PLR0915
 
         if word_data is None:
             logger.warning(f"Word not found in any dictionary: {word}")
-            console.print(f"  [yellow]⊘[/yellow] [dim]{word}[/dim] - not found in dictionary")
+            if verbose:
+                console.print(f"  [yellow]⊘[/yellow] [dim]{word}[/dim] - not found in dictionary")
             missing_words.append(
                 {
                     "word": word,
@@ -267,7 +290,8 @@ def process_words(  # noqa: PLR0912, PLR0915
 
         if definition is None:
             logger.warning(f"No definition found for {word}")
-            console.print(f"  [yellow]⊘[/yellow] [dim]{word}[/dim] - no definition")
+            if verbose:
+                console.print(f"  [yellow]⊘[/yellow] [dim]{word}[/dim] - no definition")
             missing_words.append(
                 {
                     "word": word,
@@ -290,7 +314,8 @@ def process_words(  # noqa: PLR0912, PLR0915
 
         if not audio_urls:
             logger.warning(f"No audio URLs found for {word}")
-            console.print(f"  [yellow]⊘[/yellow] [dim]{word}[/dim] - no audio")
+            if verbose:
+                console.print(f"  [yellow]⊘[/yellow] [dim]{word}[/dim] - no audio")
             missing_words.append(
                 {
                     "word": word,
@@ -308,7 +333,8 @@ def process_words(  # noqa: PLR0912, PLR0915
 
         if audio_bytes is None:
             logger.warning(f"Failed to download audio for {word}")
-            console.print(f"  [yellow]⊘[/yellow] [dim]{word}[/dim] - audio download failed")
+            if verbose:
+                console.print(f"  [yellow]⊘[/yellow] [dim]{word}[/dim] - audio download failed")
             missing_words.append(
                 {
                     "word": word,
