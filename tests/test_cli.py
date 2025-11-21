@@ -9,7 +9,7 @@ from unittest.mock import Mock, patch
 
 from click.testing import CliRunner
 from pydantic import ValidationError
-from spelling_words.cli import main, write_missing_words_file
+from spelling_words.cli import bust_cache, cli, generate, write_missing_words_file
 
 
 class TestCLIBasics:
@@ -18,12 +18,12 @@ class TestCLIBasics:
     def test_cli_shows_help_without_arguments(self):
         """Test that CLI shows help when run without arguments."""
         runner = CliRunner()
-        result = runner.invoke(main, [])
+        result = runner.invoke(cli, ["--help"])
 
         assert result.exit_code == 0
         assert "Usage:" in result.output
-        assert "--words" in result.output
-        assert "Generate Anki flashcard deck" in result.output
+        # With command group, help shows commands
+        assert "Commands:" in result.output or "generate" in result.output
 
     def test_cli_accepts_words_short_option(self, tmp_path):
         """Test that CLI accepts -w short option."""
@@ -32,7 +32,7 @@ class TestCLIBasics:
 
         runner = CliRunner()
         with patch("spelling_words.cli.process_words"):
-            result = runner.invoke(main, ["-w", str(word_file)])
+            result = runner.invoke(generate, ["-w", str(word_file)])
             # Should not fail on missing words option
             assert "--words" not in result.output
 
@@ -43,7 +43,7 @@ class TestCLIBasics:
 
         runner = CliRunner()
         with patch("spelling_words.cli.process_words"):
-            result = runner.invoke(main, ["--words", str(word_file)])
+            result = runner.invoke(generate, ["--words", str(word_file)])
             # Should not fail on missing words option
             assert "Missing option" not in result.output
 
@@ -62,7 +62,7 @@ class TestCLIBasics:
             mock_settings.return_value.mw_elementary_api_key = "test-key"
             # Mock the deck to have at least one note
             mock_apkg.return_value.deck.notes = [Mock()]
-            result = runner.invoke(main, ["-w", str(word_file), "-o", str(output_file)])
+            result = runner.invoke(generate, ["-w", str(word_file), "-o", str(output_file)])
             # Should succeed
             assert result.exit_code == 0
 
@@ -73,7 +73,7 @@ class TestCLIBasics:
 
         runner = CliRunner()
         with patch("spelling_words.cli.process_words"):
-            runner.invoke(main, ["-w", str(word_file)])
+            runner.invoke(generate, ["-w", str(word_file)])
             # Test completes successfully
             assert True
 
@@ -91,7 +91,7 @@ class TestCLIBasics:
             mock_settings.return_value.mw_elementary_api_key = "test-key"
             # Mock the deck to have at least one note
             mock_apkg.return_value.deck.notes = [Mock()]
-            result = runner.invoke(main, ["-w", str(word_file), "-v"])
+            result = runner.invoke(generate, ["-w", str(word_file), "-v"])
             # Should succeed and show debug logging
             assert result.exit_code == 0
             assert "Debug logging enabled" in result.output
@@ -105,7 +105,7 @@ class TestCLIValidation:
         nonexistent = tmp_path / "nonexistent.txt"
 
         runner = CliRunner()
-        result = runner.invoke(main, ["-w", str(nonexistent)])
+        result = runner.invoke(generate, ["-w", str(nonexistent)])
 
         assert result.exit_code != 0
         assert "not found" in result.output.lower() or "does not exist" in result.output.lower()
@@ -116,7 +116,7 @@ class TestCLIValidation:
         directory.mkdir()
 
         runner = CliRunner()
-        result = runner.invoke(main, ["-w", str(directory)])
+        result = runner.invoke(generate, ["-w", str(directory)])
 
         assert result.exit_code != 0
         assert "file" in result.output.lower() or "directory" in result.output.lower()
@@ -132,7 +132,7 @@ class TestCLIValidation:
                 "Settings validation error",
                 [{"type": "missing", "loc": ("MW_ELEMENTARY_API_KEY",), "msg": "Field required"}],
             )
-            result = runner.invoke(main, ["-w", str(word_file)])
+            result = runner.invoke(generate, ["-w", str(word_file)])
 
             assert result.exit_code != 0
             assert "API key" in result.output or "MW_ELEMENTARY_API_KEY" in result.output
@@ -153,7 +153,7 @@ class TestCLIWorkflow:
             patch("spelling_words.cli.process_words"),
         ):
             mock_settings.return_value.mw_elementary_api_key = "test-key"
-            runner.invoke(main, ["-w", str(word_file)])
+            runner.invoke(generate, ["-w", str(word_file)])
 
             # Verify WordListManager was instantiated
             assert mock_manager.called
@@ -170,7 +170,7 @@ class TestCLIWorkflow:
             patch("spelling_words.cli.process_words"),
         ):
             mock_settings.return_value.mw_elementary_api_key = "test-key"
-            runner.invoke(main, ["-w", str(word_file)])
+            runner.invoke(generate, ["-w", str(word_file)])
 
             # Verify CachedSession was created
             assert mock_session.called
@@ -189,7 +189,7 @@ class TestCLIWorkflow:
             patch("spelling_words.cli.process_words"),
         ):
             mock_settings.return_value.mw_elementary_api_key = "test-key"
-            runner.invoke(main, ["-w", str(word_file)])
+            runner.invoke(generate, ["-w", str(word_file)])
 
             # Verify all components were initialized
             assert mock_client.called
@@ -228,7 +228,7 @@ class TestCLIWorkflow:
             # Mock the deck to have notes (simulating successful word processing)
             mock_apkg.return_value.deck.notes = [Mock()]
 
-            result = runner.invoke(main, ["-w", str(word_file), "-o", str(output_file)])
+            result = runner.invoke(generate, ["-w", str(word_file), "-o", str(output_file)])
 
             assert result.exit_code == 0
             # Verify build was called
@@ -256,7 +256,7 @@ class TestCLIWorkflow:
             # Word not found
             mock_client.return_value.get_word_data.return_value = None
 
-            runner.invoke(main, ["-w", str(word_file), "-o", str(output_file)])
+            runner.invoke(generate, ["-w", str(word_file), "-o", str(output_file)])
 
             # Should complete but show warning/skip
             # Since no words were successfully processed, build should not be called
@@ -289,7 +289,7 @@ class TestCLIWorkflow:
             # Audio download fails
             mock_audio.return_value.download_audio.return_value = None
 
-            runner.invoke(main, ["-w", str(word_file), "-o", str(output_file)])
+            runner.invoke(generate, ["-w", str(word_file), "-o", str(output_file)])
 
             # Should skip word without audio
             assert mock_apkg.return_value.build.call_count == 0
@@ -328,7 +328,7 @@ class TestCLIOutput:
             # Mock the deck to have notes
             mock_apkg.return_value.deck.notes = [Mock()]
 
-            result = runner.invoke(main, ["-w", str(word_file)])
+            result = runner.invoke(generate, ["-w", str(word_file)])
 
             # Should show summary information
             assert result.exit_code == 0
@@ -346,7 +346,7 @@ class TestCLIOutput:
             patch("spelling_words.cli.process_words"),
         ):
             mock_settings.return_value.mw_elementary_api_key = "test-key"
-            runner.invoke(main, ["-w", str(word_file), "--verbose"])
+            runner.invoke(generate, ["-w", str(word_file), "--verbose"])
 
             # Verify logger was configured for debug
             # (exact verification depends on implementation)
@@ -372,7 +372,7 @@ class TestCollegiateFallback:
             mock_settings.return_value.mw_elementary_api_key = "elementary-key"
             mock_settings.return_value.mw_collegiate_api_key = "collegiate-key"
 
-            runner.invoke(main, ["-w", str(word_file)])
+            runner.invoke(generate, ["-w", str(word_file)])
 
             # Both clients should be initialized
             assert mock_elementary.called
@@ -394,7 +394,7 @@ class TestCollegiateFallback:
             mock_settings.return_value.mw_elementary_api_key = "elementary-key"
             mock_settings.return_value.mw_collegiate_api_key = None
 
-            runner.invoke(main, ["-w", str(word_file)])
+            runner.invoke(generate, ["-w", str(word_file)])
 
             # Only elementary client should be initialized
             assert mock_elementary.called
@@ -436,7 +436,7 @@ class TestCollegiateFallback:
             # Mock the deck to have notes (word was successfully added)
             mock_apkg.return_value.deck.notes = [Mock()]
 
-            result = runner.invoke(main, ["-w", str(word_file)])
+            result = runner.invoke(generate, ["-w", str(word_file)])
 
             # Word should be successfully processed using collegiate fallback
             assert result.exit_code == 0
@@ -483,7 +483,7 @@ class TestCollegiateFallback:
             # Mock the deck to have notes
             mock_apkg.return_value.deck.notes = [Mock()]
 
-            result = runner.invoke(main, ["-w", str(word_file)])
+            result = runner.invoke(generate, ["-w", str(word_file)])
 
             # Word should be successfully processed with collegiate audio
             assert result.exit_code == 0
@@ -594,7 +594,7 @@ class TestMissingWordsFile:
             # Mock the deck to have one note
             mock_apkg.return_value.deck.notes = [Mock()]
 
-            runner.invoke(main, ["-w", str(word_file), "-o", str(output_file)])
+            runner.invoke(generate, ["-w", str(word_file), "-o", str(output_file)])
 
             # Missing words file should be created
             missing_file = tmp_path / "output-missing.txt"
@@ -636,8 +636,78 @@ class TestMissingWordsFile:
             # Mock the deck to have one note
             mock_apkg.return_value.deck.notes = [Mock()]
 
-            runner.invoke(main, ["-w", str(word_file), "-o", str(output_file)])
+            runner.invoke(generate, ["-w", str(word_file), "-o", str(output_file)])
 
             # Missing words file should NOT be created
             missing_file = tmp_path / "output-missing.txt"
             assert not missing_file.exists()
+
+
+class TestBustCacheCommand:
+    """Tests for the bust-cache CLI command."""
+
+    def test_bust_cache_command_busts_cache_for_word(self):
+        """Test that bust-cache command calls cache manager."""
+        runner = CliRunner()
+
+        with patch("spelling_words.cli.CacheManager") as mock_manager:
+            mock_manager.return_value.bust_word_cache.return_value = 3
+
+            result = runner.invoke(bust_cache, ["apple"])
+
+            assert result.exit_code == 0
+            mock_manager.return_value.bust_word_cache.assert_called_once_with("apple")
+            assert "apple" in result.output
+            assert "3" in result.output
+
+    def test_bust_cache_command_handles_no_entries(self):
+        """Test that bust-cache shows message when no entries found."""
+        runner = CliRunner()
+
+        with patch("spelling_words.cli.CacheManager") as mock_manager:
+            mock_manager.return_value.bust_word_cache.return_value = 0
+
+            result = runner.invoke(bust_cache, ["nonexistent"])
+
+            assert result.exit_code == 0
+            assert "No cache entries found" in result.output
+
+    def test_bust_cache_command_accepts_verbose_flag(self):
+        """Test that bust-cache accepts --verbose flag."""
+        runner = CliRunner()
+
+        with patch("spelling_words.cli.CacheManager") as mock_manager:
+            mock_manager.return_value.bust_word_cache.return_value = 1
+
+            result = runner.invoke(bust_cache, ["apple", "--verbose"])
+
+            assert result.exit_code == 0
+            # Verbose flag should enable debug logging
+            # We don't assert on specific debug output, just that it doesn't fail
+
+    def test_bust_cache_command_handles_empty_word_error(self):
+        """Test that bust-cache handles empty word gracefully."""
+        runner = CliRunner()
+
+        with patch("spelling_words.cli.CacheManager") as mock_manager:
+            mock_manager.return_value.bust_word_cache.side_effect = ValueError(
+                "word cannot be empty"
+            )
+
+            result = runner.invoke(bust_cache, [""])
+
+            assert result.exit_code == 1
+            assert "Error:" in result.output
+
+    def test_bust_cache_command_handles_exceptions(self):
+        """Test that bust-cache handles unexpected exceptions."""
+        runner = CliRunner()
+
+        with patch("spelling_words.cli.CacheManager") as mock_manager:
+            mock_manager.return_value.bust_word_cache.side_effect = Exception("Test error")
+
+            result = runner.invoke(bust_cache, ["apple"])
+
+            assert result.exit_code == 1
+            assert "Error:" in result.output
+            assert "Failed to bust cache" in result.output
