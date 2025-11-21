@@ -35,16 +35,10 @@ def configure_verbose_logging() -> None:
 
 
 def configure_quiet_logging() -> None:
-    """Configure quiet logging - suppress library logs and only show errors."""
+    """Configure quiet logging - only show errors."""
     logger.remove()
     # Only show ERROR and above in quiet mode
     logger.add(lambda msg: None, level="ERROR")
-
-    # Suppress noisy library loggers
-    import logging
-    logging.getLogger("requests").setLevel(logging.WARNING)
-    logging.getLogger("urllib3").setLevel(logging.WARNING)
-    logging.getLogger("requests_cache").setLevel(logging.WARNING)
 
 
 def load_settings_or_abort() -> Settings:
